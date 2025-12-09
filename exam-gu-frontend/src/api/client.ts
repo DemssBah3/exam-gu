@@ -4,7 +4,8 @@ import { tokenUtils } from '../utils/token';
 import { toast } from 'sonner';
 
 // Configuration de base
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = 'https://exam-gu-production.up.railway.app/api/v1';
+
 
 // Créer l'instance axios
 export const apiClient = axios.create({
