@@ -1,0 +1,94 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { teacherExamApi } from '../../api/teacherExam';
+import axios from 'axios';
+
+vi.mock('axios');
+
+describe('TeacherExam API', () => {
+  
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('getExams', () => {
+    
+    it('should fetch teacher exams', async () => {
+      // Test: Récupérer les examens de l'enseignant
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exams: [] },
+      } as any);
+
+      const result = await teacherExamApi.getExams();
+      expect(result).toBeDefined();
+    });
+
+    it('should call correct endpoint', async () => {
+      // Test: Appeler le bon endpoint
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exams: [] },
+      } as any);
+
+      await teacherExamApi.getExams();
+      expect(axios.get).toHaveBeenCalledWith('/teacher/exams');
+    });
+  });
+
+  describe('createExam', () => {
+    
+    it('should create exam', async () => {
+      // Test: Créer un examen
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { exam: { id: 'exam-123' } },
+      } as any);
+
+      const result = await teacherExamApi.createExam({
+        title: 'New Exam',
+        courseId: 'course-123',
+      });
+
+      expect(result.exam).toBeDefined();
+    });
+
+    it('should send correct data', async () => {
+      // Test: Envoyer les bonnes données
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { exam: { id: 'exam-123' } },
+      } as any);
+
+      const data = { title: 'New Exam', courseId: 'course-123' };
+      await teacherExamApi.createExam(data);
+      expect(axios.post).toHaveBeenCalled();
+    });
+  });
+
+  describe('addQuestion', () => {
+    
+    it('should add question to exam', async () => {
+      // Test: Ajouter une question
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { question: { id: 'q-1' } },
+      } as any);
+
+      const result = await teacherExamApi.addQuestion('exam-123', {
+        text: 'Question text',
+        type: 'MCQ',
+      });
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('publishExam', () => {
+    
+    it('should publish exam', async () => {
+      // Test: Publier l'examen
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { exam: { status: 'PUBLISHED' } },
+      } as any);
+
+      const result = await teacherExamApi.publishExam('exam-123');
+      expect(result.exam.status).toBe('PUBLISHED');
+    });
+  });
+});
+

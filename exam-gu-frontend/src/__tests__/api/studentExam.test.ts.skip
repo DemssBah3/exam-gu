@@ -1,0 +1,206 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { studentExamApi } from '../../api/studentExam';
+import axios from 'axios';
+
+// Mock axios
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => ({
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+    })),
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+describe('StudentExam API', () => {
+  
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('getExams', () => {
+    
+    it('should fetch student exams', async () => {
+      // Test: Récupérer les examens
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exams: [] },
+      } as any);
+
+      const result = await studentExamApi.getExams();
+      expect(result).toBeDefined();
+    });
+
+    it('should call correct endpoint', async () => {
+      // Test: Appeler le bon endpoint
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exams: [] },
+      } as any);
+
+      await studentExamApi.getExams();
+      expect(axios.get).toHaveBeenCalledWith('/student/exams');
+    });
+  });
+
+  describe('getExamById', () => {
+    
+    it('should fetch specific exam', async () => {
+      // Test: Récupérer un examen spécifique
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exam: { id: 'exam-123' } },
+      } as any);
+
+      const result = await studentExamApi.getExamById('exam-123');
+      expect(result).toBeDefined();
+    });
+
+    it('should call correct endpoint with exam id', async () => {
+      // Test: Appeler l'endpoint avec l'ID
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { exam: { id: 'exam-123' } },
+      } as any);
+
+      await studentExamApi.getExamById('exam-123');
+      expect(axios.get).toHaveBeenCalledWith('/student/exams/exam-123');
+    });
+  });
+
+  describe('startExam', () => {
+    
+    it('should create exam attempt', async () => {
+      // Test: Créer une tentative
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { attempt: { id: 'attempt-123' } },
+      } as any);
+
+      const result = await studentExamApi.startExam('exam-123');
+      expect(result.attempt).toBeDefined();
+    });
+
+    it('should call correct endpoint', async () => {
+      // Test: Appeler le bon endpoint
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { attempt: { id: 'attempt-123' } },
+      } as any);
+
+      await studentExamApi.startExam('exam-123');
+      expect(axios.post).toHaveBeenCalledWith(
+        '/student/exams/exam-123/start',
+        expect.anything()
+      );
+    });
+  });
+
+  describe('saveAnswer', () => {
+    
+    it('should save answer', async () => {
+      // Test: Sauvegarder une réponse
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { success: true },
+      } as any);
+
+      const result = await studentExamApi.saveAnswer('exam-123', 'attempt-123', {
+        questionId: 'q-1',
+        selectedOption: 'opt-2',
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should call correct endpoint', async () => {
+      // Test: Appeler le bon endpoint
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { success: true },
+      } as any);
+
+      await studentExamApi.saveAnswer('exam-123', 'attempt-123', {
+        questionId: 'q-1',
+        selectedOption: 'opt-2',
+      });
+
+      expect(axios.post).toHaveBeenCalled();
+    });
+  });
+
+  describe('submitExam', () => {
+    
+    it('should submit exam', async () => {
+      // Test: Soumettre l'examen
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { totalScore: 65, maxScore: 100 },
+      } as any);
+
+      const result = await studentExamApi.submitExam('exam-123', 'attempt-123');
+      expect(result.totalScore).toBe(65);
+      expect(result.maxScore).toBe(100);
+    });
+
+    it('should return score after submission', async () => {
+      // Test: Retourner le score
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { 
+          totalScore: 65, 
+          maxScore: 100,
+          percentage: 65,
+        },
+      } as any);
+
+      const result = await studentExamApi.submitExam('exam-123', 'attempt-123');
+      expect(typeof result.totalScore).toBe('number');
+      expect(typeof result.maxScore).toBe('number');
+    });
+  });
+
+  describe('getAttemptResults', () => {
+    
+    it('should fetch attempt results', async () => {
+      // Test: Récupérer les résultats
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { 
+          score: 65,
+          percentage: 65,
+          isAvailable: true,
+        },
+      } as any);
+
+      const result = await studentExamApi.getAttemptResults('exam-123', 'attempt-123');
+      expect(result).toBeDefined();
+    });
+
+    it('should return results with score', async () => {
+      // Test: Retourner les résultats
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { 
+          score: 65,
+          maxScore: 100,
+          percentage: 65,
+          isAvailable: true,
+        },
+      } as any);
+
+      const result = await studentExamApi.getAttemptResults('exam-123', 'attempt-123');
+      expect(result.score).toBe(65);
+      expect(result.isAvailable).toBe(true);
+    });
+  });
+
+  describe('getAttempt', () => {
+    
+    it('should fetch current attempt', async () => {
+      // Test: Récupérer la tentative actuelle
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { attempt: { id: 'attempt-123' } },
+      } as any);
+
+      const result = await studentExamApi.getAttempt('exam-123', 'attempt-123');
+      expect(result).toBeDefined();
+    });
+  });
+});

@@ -1,0 +1,3136 @@
+openapi: 3.0.0
+info:
+  contact:
+    email: support@examgu.uqac.ca
+    name: Support Exam-GU
+  description: API de gestion des examens en ligne pour l'Université de Québec à Chicoutimi
+  title: Exam-GU API
+  version: 1.0.0
+servers:
+- description: Serveur de développement
+  url: http://localhost:8080/api/v1
+- description: Serveur de production
+  url: https://api.examgu.uqac.ca/api/v1
+security:
+- BearerAuth: []
+tags:
+- description: Authentification et gestion des sessions
+  name: Authentication
+- description: Opérations d'administration (Admin seulement)
+  name: Admin
+- name: Teacher
+  description: Opérations pour les enseignants
+- name: Student
+  description: Opérations pour les étudiants
+- description: Gestion des examens
+  name: Exams
+- description: Gestion des questions d'examen
+  name: Questions
+- description: Passages d'examens par les étudiants
+  name: Attempts
+- description: Résultats et correction des examens
+  name: Results
+paths:
+  /auth/login:
+    post:
+      description: Authentifier un utilisateur et obtenir un token JWT
+      operationId: authLoginPOST
+      x-eov-operation-handler: controllers/AuthenticationController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/_auth_login_post_request"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/_auth_login_post_200_response"
+          description: Authentification réussie
+        "401":
+          description: Identifiants invalides
+      summary: Se connecter
+      tags:
+      - Authentication
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Authentication
+   
+
+  /auth/logout:
+    post:
+      description: Terminer la session utilisateur
+      operationId: authLogoutPOST
+      x-eov-operation-handler: controllers/AuthenticationController
+      responses:
+        "200":
+          description: Déconnexion réussie
+        "401":
+          description: Non authentifié
+      summary: Se déconnecter
+      tags:
+      - Authentication
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Authentication
+    
+
+  /auth/me:
+    get:
+      description: Retourne les informations de l'utilisateur connecté
+      operationId: authMeGET
+      x-eov-operation-handler: controllers/AuthenticationController
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Profil utilisateur
+        "401":
+          description: Non authentifié
+      summary: Obtenir le profil courant
+      tags:
+      - Authentication
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Authentication
+    
+
+
+  /auth/login-history:
+    get:
+      description: Retourne le journal des connexions de l'utilisateur
+      operationId: authLoginHistoryGET
+      x-eov-operation-handler: controllers/AuthenticationController
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/LoginLog"
+                type: array
+          description: Liste des connexions
+        "401":
+          description: Non authentifié
+      summary: Historique des connexions
+      tags:
+        - Authentication
+      x-accepts:
+        - application/json
+      x-tags:
+        - tag: Authentication
+
+
+
+  /teacher/my-sessions:
+    get:
+      summary: Mes sessions
+      description: Retourne les sessions assignées à l'enseignant
+      operationId: teacherMySessionsGET
+      x-eov-operation-handler: controllers/TeacherController
+      tags:
+        - Teacher
+      responses:
+        "200":
+          description: Liste des sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Non authentifié
+  /teacher/exams:
+    get:
+      summary: Mes examens
+      description: Retourne tous les examens créés par l'enseignant
+      operationId: teacherExamsGET
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      responses:
+        "200":
+          description: Liste des examens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Non authentifié
+    post:
+      summary: Créer un examen
+      description: Créer un nouvel examen pour une session
+      operationId: teacherExamsPOST
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionId
+                - title
+                - duration
+                - startTime
+                - endTime
+              properties:
+                sessionId:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+                duration:
+                  type: integer
+                  description: Durée en minutes
+                startTime:
+                  type: string
+                  format: date-time
+                endTime:
+                  type: string
+                  format: date-time
+                maxAttempts:
+                  type: integer
+                  default: 1
+      responses:
+        "201":
+          description: Examen créé
+        "400":
+          description: Données invalides
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+
+  /teacher/exams/{examId}:
+    get:
+      summary: Détails d'un examen
+      description: Récupérer les détails complets d'un examen
+      operationId: teacherExamsExamIdGET
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails de l'examen
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+    put:
+      summary: Modifier un examen
+      description: Modifier les informations d'un examen
+      operationId: teacherExamsExamIdPUT
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                duration:
+                  type: integer
+                startTime:
+                  type: string
+                  format: date-time
+                endTime:
+                  type: string
+                  format: date-time
+                maxAttempts:
+                  type: integer
+      responses:
+        "200":
+          description: Examen modifié
+        "400":
+          description: Modification impossible
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+    delete:
+      summary: Supprimer un examen
+      description: Supprimer un examen (impossible s'il y a des tentatives)
+      operationId: teacherExamsExamIdDELETE
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Examen supprimé
+        "400":
+          description: Suppression impossible
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+
+  /teacher/exams/{examId}/publish:
+    post:
+      summary: Publier un examen
+      description: Changer le statut de DRAFT à PUBLISHED
+      operationId: teacherExamsExamIdPublishPOST
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Examen publié
+        "400":
+          description: Publication impossible
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+
+  /teacher/exams/{examId}/questions:
+    post:
+      summary: Ajouter une question
+      description: Ajouter une question à un examen
+      operationId: teacherExamsExamIdQuestionsPOST
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - text
+                - points
+              properties:
+                type:
+                  type: string
+                  enum: [MCQ, TRUE_FALSE, OPEN_ENDED]
+                text:
+                  type: string
+                points:
+                  type: number
+                options:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                      isCorrect:
+                        type: boolean
+                correctAnswer:
+                  type: boolean
+      responses:
+        "201":
+          description: Question ajoutée
+        "400":
+          description: Données invalides
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+
+  /teacher/exams/{examId}/questions/{questionId}:
+    put:
+      summary: Modifier une question
+      description: Modifier une question existante
+      operationId: teacherExamsExamIdQuestionsQuestionIdPUT
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                points:
+                  type: number
+                options:
+                  type: array
+                  items:
+                    type: object
+                correctAnswer:
+                  type: boolean
+      responses:
+        "200":
+          description: Question modifiée
+        "400":
+          description: Modification impossible
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Question non trouvée
+    delete:
+      summary: Supprimer une question
+      description: Supprimer une question d'un examen
+      operationId: teacherExamsExamIdQuestionsQuestionIdDELETE
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Question supprimée
+        "400":
+          description: Suppression impossible
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Question non trouvée
+
+  /teacher/exams/{examId}/attempts:
+    get:
+      summary: Tentatives d'examen
+      description: Récupérer toutes les tentatives pour un examen (pour correction)
+      operationId: teacherExamsExamIdAttemptsGET
+      x-eov-operation-handler: controllers/TeacherExamController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Liste des tentatives
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+  /teacher/exams/{examId}/attempts/{attemptId}/grading:
+    get:
+      summary: Détails pour correction
+      description: Récupérer les détails d'une tentative pour la corriger
+      operationId: teacherExamsExamIdAttemptsAttemptIdGradingGET
+      x-eov-operation-handler: controllers/TeacherGradingController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails de la tentative
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Tentative non trouvée
+
+  /teacher/exams/{examId}/attempts/{attemptId}/grading/{questionId}:
+    put:
+      summary: Corriger une question
+      description: Attribuer des points et un feedback à une question
+      operationId: teacherExamsExamIdAttemptsAttemptIdGradingQuestionIdPUT
+      x-eov-operation-handler: controllers/TeacherGradingController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pointsAwarded
+              properties:
+                pointsAwarded:
+                  type: number
+                  minimum: 0
+                  description: Points attribués (entre 0 et le max de la question)
+                feedback:
+                  type: string
+                  description: Commentaire pour l'étudiant
+      responses:
+        "200":
+          description: Question corrigée
+        "400":
+          description: Données invalides
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Question non trouvée
+
+  /teacher/exams/{examId}/attempts/{attemptId}/grading/finalize:
+    post:
+      summary: Finaliser la correction
+      description: Marquer la correction comme terminée
+      operationId: teacherExamsExamIdAttemptsAttemptIdGradingFinalizePOST
+      x-eov-operation-handler: controllers/TeacherGradingController
+      tags:
+        - Teacher
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Correction finalisée
+        "400":
+          description: Correction incomplète
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Tentative non trouvée
+
+  /student/my-courses:
+    get:
+      summary: Mes cours
+      description: Retourne les cours auxquels l'étudiant est inscrit
+      operationId: studentMyCoursesGET
+      x-eov-operation-handler: controllers/StudentController
+      tags:
+        - Student
+      responses:
+        "200":
+          description: Liste des cours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Non authentifié  
+  /student/exams:
+    get:
+      summary: Mes examens disponibles
+      description: Retourne tous les examens disponibles pour l'étudiant
+      operationId: studentExamsGET
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      responses:
+        "200":
+          description: Liste des examens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Non authentifié
+
+  /student/exams/{examId}:
+    get:
+      summary: Détails d'un examen
+      description: Récupérer les détails d'un examen (sans les réponses)
+      operationId: studentExamsExamIdGET
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails de l'examen
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+
+  /student/exams/{examId}/start:
+    post:
+      summary: Commencer un examen
+      description: Démarrer une nouvelle tentative d'examen
+      operationId: studentExamsExamIdStartPOST
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Tentative créée
+        "400":
+          description: Impossible de démarrer
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Examen non trouvé
+
+  /student/exams/{examId}/attempts/{attemptId}:
+    get:
+      summary: Récupérer une tentative
+      description: Récupérer les détails d'une tentative en cours
+      operationId: studentExamsExamIdAttemptsAttemptIdGET
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails de la tentative
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Tentative non trouvée
+
+  /student/exams/{examId}/attempts/{attemptId}/answers:
+    post:
+      summary: Sauvegarder une réponse
+      description: Sauvegarder la réponse à une question
+      operationId: studentExamsExamIdAttemptsAttemptIdAnswersPOST
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - questionId
+              properties:
+                questionId:
+                  type: string
+                selectedOption:
+                  type: string
+                  description: Pour MCQ
+                booleanAnswer:
+                  type: boolean
+                  description: Pour TRUE_FALSE
+                textAnswer:
+                  type: string
+                  description: Pour OPEN_ENDED
+      responses:
+        "200":
+          description: Réponse sauvegardée
+        "400":
+          description: Données invalides
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Tentative non trouvée
+
+  /student/exams/{examId}/attempts/{attemptId}/submit:
+    post:
+      summary: Soumettre l'examen
+      description: Soumettre la tentative d'examen
+      operationId: studentExamsExamIdAttemptsAttemptIdSubmitPOST
+      x-eov-operation-handler: controllers/StudentExamController
+      tags:
+        - Student
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Examen soumis avec succès
+        "400":
+          description: Impossible de soumettre
+        "401":
+          description: Non authentifié
+        "403":
+          description: Accès refusé
+        "404":
+          description: Tentative non trouvée
+
+  /admin/users:
+    get:
+      description: Retourne la liste de tous les utilisateurs (Admin seulement)
+      operationId: adminUsersGET
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - description: Filtrer par rôle
+        explode: true
+        in: query
+        name: role
+        required: false
+        schema:
+          enum:
+          - ADMIN
+          - TEACHER
+          - STUDENT
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/User"
+                type: array
+          description: Liste des utilisateurs
+        "403":
+          description: Accès refusé (Admin requis)
+      summary: Lister les utilisateurs
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+    post:
+      description: Créer un nouvel enseignant ou étudiant (Admin seulement)
+      operationId: adminUsersPOST
+      x-eov-operation-handler: controllers/AdminController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Utilisateur créé
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé (Admin requis)
+      summary: Créer un utilisateur
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/users/{userId}:
+    delete:
+      operationId: adminUsersUserIdDELETE
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Utilisateur supprimé
+        "404":
+          description: Utilisateur non trouvé
+        "403":
+          description: Accès refusé
+      summary: Supprimer un utilisateur
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    get:
+      operationId: adminUsersUserIdGET
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Détails de l'utilisateur
+        "404":
+          description: Utilisateur non trouvé
+        "403":
+          description: Accès refusé
+      summary: Obtenir un utilisateur
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    put:
+      operationId: adminUsersUserIdPUT
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Utilisateur modifié
+        "404":
+          description: Utilisateur non trouvé
+        "403":
+          description: Accès refusé
+      summary: Modifier un utilisateur
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/courses:
+    get:
+      description: Retourne la liste de tous les cours (Admin seulement)
+      operationId: adminCoursesGET
+      x-eov-operation-handler: controllers/AdminController
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Course"
+                type: array
+          description: Liste des cours
+        "403":
+          description: Accès refusé
+      summary: Lister les cours
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+     
+    post:
+      description: Créer un nouveau cours template (Admin seulement)
+      operationId: adminCoursesPOST
+      x-eov-operation-handler: controllers/AdminController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+          description: Cours créé
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé
+      summary: Créer un cours
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/courses/{courseId}:
+    delete:
+      operationId: adminCoursesCourseIdDELETE
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: courseId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Cours supprimé
+        "404":
+          description: Cours non trouvé
+        "403":
+          description: Accès refusé
+      summary: Supprimer un cours
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    get:
+      operationId: adminCoursesCourseIdGET
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: courseId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+          description: Détails du cours
+        "404":
+          description: Cours non trouvé
+      summary: Obtenir un cours
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    put:
+      operationId: adminCoursesCourseIdPUT
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: courseId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+          description: Cours modifié
+        "404":
+          description: Cours non trouvé
+        "403":
+          description: Accès refusé
+      summary: Modifier un cours
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+     
+  /admin/sessions:
+    get:
+      description: Retourne la liste de toutes les sessions (Admin seulement)
+      operationId: adminSessionsGET
+      x-eov-operation-handler: controllers/AdminController
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Session"
+                type: array
+          description: Liste des sessions
+        "403":
+          description: Accès refusé
+      summary: Lister les sessions
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    post:
+      description: Créer une nouvelle session de cours (Admin seulement)
+      operationId: adminSessionsPOST
+      x-eov-operation-handler: controllers/AdminController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+          description: Session créée
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé
+      summary: Créer une session
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/sessions/{sessionId}:
+    delete:
+      operationId: adminSessionsSessionIdDELETE
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Session supprimée
+        "404":
+          description: Session non trouvée
+        "403":
+          description: Accès refusé
+      summary: Supprimer une session
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    get:
+      operationId: adminSessionsSessionIdGET
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+          description: Détails de la session
+        "404":
+          description: Session non trouvée
+      summary: Obtenir une session
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    put:
+      operationId: adminSessionsSessionIdPUT
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSessionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+          description: Session modifiée
+        "404":
+          description: Session non trouvée
+        "403":
+          description: Accès refusé
+      summary: Modifier une session
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/enrollments:
+    get:
+      description: Retourne la liste de toutes les inscriptions (Admin seulement)
+      operationId: adminEnrollmentsGET
+      x-eov-operation-handler: controllers/AdminController
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Enrollment"
+                type: array
+          description: Liste des inscriptions
+        "403":
+          description: Accès refusé
+      summary: Lister les inscriptions
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    post:
+      description: Inscrire un étudiant à un cours pour une session (Admin seulement)
+      operationId: adminEnrollmentsPOST
+      x-eov-operation-handler: controllers/AdminController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnrollmentRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+          description: Inscription créée
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé
+      summary: Inscrire un étudiant
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/enrollments/{enrollmentId}:
+    delete:
+      operationId: adminEnrollmentsEnrollmentIdDELETE
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: enrollmentId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Inscription supprimée
+        "404":
+          description: Inscription non trouvée
+        "403":
+          description: Accès refusé
+      summary: Retirer une inscription
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/course-assignments:
+    get:
+      description: Retourne la liste de toutes les assignations (Admin seulement)
+      operationId: adminCourseAssignmentsGET
+      x-eov-operation-handler: controllers/AdminController
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/CourseAssignment"
+                type: array
+          description: Liste des assignations
+        "403":
+          description: Accès refusé
+      summary: Lister les assignations
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+    post:
+      description: Assigner un enseignant à un cours pour une session (Admin seulement)
+      operationId: adminCourseAssignmentsPOST
+      x-eov-operation-handler: controllers/AdminController
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseAssignmentRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseAssignment"
+          description: Assignation créée
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé
+      summary: Assigner un enseignant
+      tags:
+      - Admin
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /admin/course-assignments/{assignmentId}:
+    delete:
+      operationId: adminCourseAssignmentsAssignmentIdDELETE
+      x-eov-operation-handler: controllers/AdminController
+      parameters:
+      - explode: false
+        in: path
+        name: assignmentId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Assignation supprimée
+        "404":
+          description: Assignation non trouvée
+        "403":
+          description: Accès refusé
+      summary: Retirer une assignation
+      tags:
+      - Admin
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Admin
+      
+  /exams:
+    get:
+      description: "Retourne les examens de l'utilisateur (ses examens pour enseignant,\
+        \ ses examens inscrits pour étudiant)"
+      operationId: examsGET
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Exam"
+                type: array
+          description: Liste des examens
+        "401":
+          description: Non authentifié
+      summary: Lister les examens
+      tags:
+      - Exams
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+    post:
+      description: Créer un nouvel examen (Enseignant seulement)
+      operationId: examsPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExamRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+          description: Examen créé
+        "400":
+          description: Données invalides
+        "403":
+          description: Accès refusé (Enseignant requis)
+      summary: Créer un examen
+      tags:
+      - Exams
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+  /exams/{examId}:
+    delete:
+      description: Supprimer un examen en brouillon (Enseignant seulement)
+      operationId: examsExamIdDELETE
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Examen supprimé
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé ou examen non en brouillon
+      summary: Supprimer un examen
+      tags:
+      - Exams
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+    get:
+      description: Retourne les détails d'un examen si l'utilisateur a accès
+      operationId: examsExamIdGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamDetail"
+          description: Détails de l'examen
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Obtenir un examen
+      tags:
+      - Exams
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+    put:
+      description: Modifier un examen en brouillon (Enseignant seulement)
+      operationId: examsExamIdPUT
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExamRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+          description: Examen modifié
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé ou examen non en brouillon
+      summary: Modifier un examen
+      tags:
+      - Exams
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+  /exams/{examId}/status:
+    put:
+      description: Changer le statut d'un examen (DRAFT → ACTIVE → CLOSED/IN_GRADING
+        → GRADED)
+      operationId: examsExamIdStatusPUT
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/_exams__examId__status_put_request"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+          description: Statut modifié
+        "400":
+          description: Transition de statut invalide
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Changer le statut d'un examen
+      tags:
+      - Exams
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Exams
+      x-eov-operation-handler: controllers/ExamsController
+  /exams/{examId}/questions:
+    get:
+      description: Retourne les questions d'un examen
+      operationId: examsExamIdQuestionsGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Question"
+                type: array
+          description: Liste des questions
+        "404":
+          description: Examen non trouvé
+      summary: Lister les questions
+      tags:
+      - Questions
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Questions
+      x-eov-operation-handler: controllers/QuestionsController
+    post:
+      description: Ajouter une question à un examen en brouillon (Enseignant seulement)
+      operationId: examsExamIdQuestionsPOST
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuestionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+          description: Question créée
+        "400":
+          description: Données invalides
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Ajouter une question
+      tags:
+      - Questions
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Questions
+      x-eov-operation-handler: controllers/QuestionsController
+  /exams/{examId}/questions/{questionId}:
+    delete:
+      description: Supprimer une question d'un examen en brouillon (Enseignant seulement)
+      operationId: examsExamIdQuestionsQuestionIdDELETE
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: questionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Question supprimée
+        "404":
+          description: Question non trouvée
+        "403":
+          description: Accès refusé
+      summary: Supprimer une question
+      tags:
+      - Questions
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Questions
+      x-eov-operation-handler: controllers/QuestionsController
+    get:
+      operationId: examsExamIdQuestionsQuestionIdGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: questionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+          description: Détails de la question
+        "404":
+          description: Question non trouvée
+      summary: Obtenir une question
+      tags:
+      - Questions
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Questions
+      x-eov-operation-handler: controllers/QuestionsController
+    put:
+      description: Modifier une question d'un examen en brouillon (Enseignant seulement)
+      operationId: examsExamIdQuestionsQuestionIdPUT
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: questionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuestionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+          description: Question modifiée
+        "404":
+          description: Question non trouvée
+        "403":
+          description: Accès refusé
+      summary: Modifier une question
+      tags:
+      - Questions
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Questions
+      x-eov-operation-handler: controllers/QuestionsController
+  /exams/{examId}/attempts:
+    post:
+      description: Démarrer une nouvelle tentative d'examen pour un étudiant
+      operationId: examsExamIdAttemptsPOST
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
+          description: Tentative créée
+        "400":
+          description: Tentatives épuisées ou examen non disponible
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Démarrer une tentative
+      tags:
+      - Attempts
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Attempts
+      x-eov-operation-handler: controllers/AttemptsController
+  /exams/{examId}/attempts/{attemptId}:
+    get:
+      description: Retourne l'état courant d'une tentative
+      operationId: examsExamIdAttemptsAttemptIdGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptDetail"
+          description: État de la tentative
+        "404":
+          description: Tentative non trouvée
+        "403":
+          description: Accès refusé
+      summary: Obtenir une tentative
+      tags:
+      - Attempts
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Attempts
+      x-eov-operation-handler: controllers/AttemptsController
+  /exams/{examId}/attempts/{attemptId}/answers/{questionId}:
+    post:
+      description: Soumettre ou mettre à jour la réponse à une question pendant une
+        tentative
+      operationId: examsExamIdAttemptsAttemptIdAnswersQuestionIdPOST
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: questionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAnswerRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Answer"
+          description: Réponse enregistrée
+        "400":
+          description: Données invalides
+        "404":
+          description: Tentative ou question non trouvée
+        "403":
+          description: Tentative expirée ou accès refusé
+      summary: Soumettre une réponse
+      tags:
+      - Attempts
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Attempts
+      x-eov-operation-handler: controllers/AttemptsController
+  /exams/{examId}/attempts/{attemptId}/save:
+    post:
+      description: Sauvegarder les réponses actuelles (sauvegarde manuelle)
+      operationId: examsExamIdAttemptsAttemptIdSavePOST
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Réponses sauvegardées
+        "404":
+          description: Tentative non trouvée
+        "403":
+          description: Accès refusé
+      summary: Sauvegarder manuellement
+      tags:
+      - Attempts
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Attempts
+      x-eov-operation-handler: controllers/AttemptsController
+  /exams/{examId}/attempts/{attemptId}/submit:
+    post:
+      description: Soumettre définitivement l'examen (fin de tentative)
+      operationId: examsExamIdAttemptsAttemptIdSubmitPOST
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+          description: Examen soumis
+        "400":
+          description: Tentative déjà soumise
+        "404":
+          description: Tentative non trouvée
+        "403":
+          description: Accès refusé
+      summary: Soumettre l'examen
+      tags:
+      - Attempts
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Attempts
+      x-eov-operation-handler: controllers/AttemptsController
+  /exams/{examId}/results:
+    get:
+      description: Retourne tous les résultats (enseignant) ou ses résultats (étudiant)
+      operationId: examsExamIdResultsGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Result"
+                type: array
+          description: Liste des résultats
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Lister les résultats
+      tags:
+      - Results
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Results
+      x-eov-operation-handler: controllers/ResultsController
+  /exams/{examId}/results/{resultId}:
+    get:
+      description: Retourne les détails d'un résultat (respecte la visibilité)
+      operationId: examsExamIdResultsResultIdGET
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: resultId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultDetail"
+          description: Détails du résultat
+        "404":
+          description: Résultat non trouvé
+        "403":
+          description: Accès refusé
+      summary: Obtenir un résultat
+      tags:
+      - Results
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Results
+      x-eov-operation-handler: controllers/ResultsController
+  /exams/{examId}/results/{resultId}/questions/{questionId}/grade:
+    put:
+      description: Assigner une note à une question ouverte (Enseignant seulement)
+      operationId: examsExamIdResultsResultIdQuestionsQuestionIdGradePUT
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: resultId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: questionId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/_exams__examId__results__resultId__questions__questionId__grade_put_request"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionGrade"
+          description: Question corrigée
+        "400":
+          description: Points invalides
+        "404":
+          description: Résultat ou question non trouvée
+        "403":
+          description: Accès refusé
+      summary: Corriger une question ouverte
+      tags:
+      - Results
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Results
+      x-eov-operation-handler: controllers/ResultsController
+  /exams/{examId}/visibility:
+    put:
+      description: Configurer quelles infos sont visibles aux étudiants (Enseignant
+        seulement)
+      operationId: examsExamIdVisibilityPUT
+      parameters:
+      - explode: false
+        in: path
+        name: examId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisibilityConfig"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityConfig"
+          description: Visibilité configurée
+        "404":
+          description: Examen non trouvé
+        "403":
+          description: Accès refusé
+      summary: Configurer la visibilité des résultats
+      tags:
+      - Results
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+      x-tags:
+      - tag: Results
+      x-eov-operation-handler: controllers/ResultsController
+
+
+components:
+  schemas:
+    User:
+      example:
+        firstName: firstName
+        lastName: lastName
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        role: ADMIN
+        id: id
+        email: email
+      properties:
+        id:
+          description: ID unique de l'utilisateur
+          type: string
+        email:
+          format: email
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          enum:
+          - ADMIN
+          - TEACHER
+          - STUDENT
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+      required:
+      - email
+      - firstName
+      - id
+      - lastName
+      - role
+      type: object
+    CreateUserRequest:
+      example:
+        firstName: firstName
+        lastName: lastName
+        password: password
+        role: TEACHER
+        email: email
+      properties:
+        email:
+          format: email
+          type: string
+        password:
+          format: password
+          minLength: 8
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          enum:
+          - TEACHER
+          - STUDENT
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
+      - password
+      - role
+      type: object
+    UpdateUserRequest:
+      example:
+        firstName: firstName
+        lastName: lastName
+        email: email
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          format: email
+          type: string
+      type: object
+    LoginLog:
+      example:
+        ipAddress: ipAddress
+        userAgent: userAgent
+        id: id
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          type: string
+        timestamp:
+          format: date-time
+          type: string
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+      type: object
+    Course:
+      example:
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        code: code
+        credits: 0
+        description: description
+        id: id
+        title: title
+      properties:
+        id:
+          type: string
+        code:
+          description: Code du cours (ex. INF111)
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+        createdAt:
+          format: date-time
+          type: string
+      required:
+      - code
+      - id
+      - title
+      type: object
+    CreateCourseRequest:
+      example:
+        code: code
+        credits: 0
+        description: description
+        title: title
+      properties:
+        code:
+          description: Code unique du cours
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+      required:
+      - code
+      - title
+      type: object
+    UpdateCourseRequest:
+      example:
+        credits: 0
+        description: description
+        title: title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+      type: object
+    Session:
+      example:
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        endDate: 2000-01-23
+        semester: semester
+        id: id
+        courseId: courseId
+        startDate: 2000-01-23
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        semester:
+          description: "Identifiant de session (ex. Winter2025, Fall2024)"
+          type: string
+        startDate:
+          format: date
+          type: string
+        endDate:
+          format: date
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+      required:
+      - courseId
+      - endDate
+      - id
+      - semester
+      - startDate
+      type: object
+    CreateSessionRequest:
+      example:
+        endDate: 2000-01-23
+        semester: semester
+        courseId: courseId
+        startDate: 2000-01-23
+      properties:
+        courseId:
+          type: string
+        semester:
+          type: string
+        startDate:
+          format: date
+          type: string
+        endDate:
+          format: date
+          type: string
+      required:
+      - courseId
+      - endDate
+      - semester
+      - startDate
+      type: object
+    UpdateSessionRequest:
+      example:
+        endDate: 2000-01-23
+        semester: semester
+        startDate: 2000-01-23
+      properties:
+        semester:
+          type: string
+        startDate:
+          format: date
+          type: string
+        endDate:
+          format: date
+          type: string
+      type: object
+    Enrollment:
+      example:
+        studentId: studentId
+        id: id
+        sessionId: sessionId
+        enrolledAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        sessionId:
+          type: string
+        enrolledAt:
+          format: date-time
+          type: string
+      required:
+      - id
+      - sessionId
+      - studentId
+      type: object
+    CreateEnrollmentRequest:
+      example:
+        studentId: studentId
+        sessionId: sessionId
+      properties:
+        studentId:
+          type: string
+        sessionId:
+          type: string
+      required:
+      - sessionId
+      - studentId
+      type: object
+    CourseAssignment:
+      example:
+        teacherId: teacherId
+        assignedAt: 2000-01-23T04:56:07.000+00:00
+        id: id
+        sessionId: sessionId
+      properties:
+        id:
+          type: string
+        teacherId:
+          type: string
+        sessionId:
+          type: string
+        assignedAt:
+          format: date-time
+          type: string
+      required:
+      - id
+      - sessionId
+      - teacherId
+      type: object
+    CreateCourseAssignmentRequest:
+      example:
+        teacherId: teacherId
+        sessionId: sessionId
+      properties:
+        teacherId:
+          type: string
+        sessionId:
+          type: string
+      required:
+      - sessionId
+      - teacherId
+      type: object
+    Exam:
+      example:
+        description: description
+        sessionId: sessionId
+        title: title
+        duration: 0
+        maxAttempts: 6
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        teacherId: teacherId
+        startTime: 2000-01-23T04:56:07.000+00:00
+        id: id
+        endTime: 2000-01-23T04:56:07.000+00:00
+        courseId: courseId
+        status: DRAFT
+        updatedAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        sessionId:
+          type: string
+        courseId:
+          type: string
+        teacherId:
+          type: string
+        duration:
+          description: Durée en minutes
+          type: integer
+        startTime:
+          format: date-time
+          type: string
+        endTime:
+          format: date-time
+          type: string
+        maxAttempts:
+          description: Nombre maximum de tentatives
+          type: integer
+        status:
+          enum:
+          - DRAFT
+          - ACTIVE
+          - CLOSED
+          - IN_GRADING
+          - GRADED
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+      - courseId
+      - duration
+      - id
+      - maxAttempts
+      - sessionId
+      - status
+      - teacherId
+      - title
+      type: object
+    ExamDetail:
+      allOf:
+      - $ref: "#/components/schemas/Exam"
+      - properties:
+          questions:
+            items:
+              $ref: "#/components/schemas/Question"
+            type: array
+          questionCount:
+            type: integer
+        type: object
+      example:
+        questionCount: 5
+        questions:
+        - examId: examId
+          id: id
+          text: text
+          type: MCQ
+          points: 1.4658129805029452
+          order: 5
+        - examId: examId
+          id: id
+          text: text
+          type: MCQ
+          points: 1.4658129805029452
+          order: 5
+        description: description
+        sessionId: sessionId
+        title: title
+        duration: 0
+        maxAttempts: 6
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        teacherId: teacherId
+        startTime: 2000-01-23T04:56:07.000+00:00
+        id: id
+        endTime: 2000-01-23T04:56:07.000+00:00
+        courseId: courseId
+        status: DRAFT
+        updatedAt: 2000-01-23T04:56:07.000+00:00
+    CreateExamRequest:
+      example:
+        duration: 0
+        maxAttempts: 1
+        description: description
+        startTime: 2000-01-23T04:56:07.000+00:00
+        sessionId: sessionId
+        endTime: 2000-01-23T04:56:07.000+00:00
+        title: title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        sessionId:
+          type: string
+        duration:
+          description: Durée en minutes
+          type: integer
+        startTime:
+          format: date-time
+          type: string
+        endTime:
+          format: date-time
+          type: string
+        maxAttempts:
+          minimum: 1
+          type: integer
+      required:
+      - duration
+      - endTime
+      - maxAttempts
+      - sessionId
+      - startTime
+      - title
+      type: object
+    UpdateExamRequest:
+      example:
+        duration: 0
+        maxAttempts: 6
+        description: description
+        startTime: 2000-01-23T04:56:07.000+00:00
+        endTime: 2000-01-23T04:56:07.000+00:00
+        title: title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        duration:
+          type: integer
+        startTime:
+          format: date-time
+          type: string
+        endTime:
+          format: date-time
+          type: string
+        maxAttempts:
+          type: integer
+      type: object
+    Question:
+      discriminator:
+        propertyName: type
+      example:
+        examId: examId
+        id: id
+        text: text
+        type: MCQ
+        points: 1.4658129805029452
+        order: 5
+      oneOf:
+      - $ref: "#/components/schemas/MCQQuestion"
+      - $ref: "#/components/schemas/TrueFalseQuestion"
+      - $ref: "#/components/schemas/OpenEndedQuestion"
+      properties:
+        id:
+          type: string
+        examId:
+          type: string
+        type:
+          enum:
+          - MCQ
+          - TRUE_FALSE
+          - OPEN_ENDED
+          type: string
+        text:
+          type: string
+        points:
+          description: Points pour cette question
+          type: number
+        order:
+          description: Ordre d'apparition dans l'examen
+          type: integer
+      required:
+      - examId
+      - id
+      - points
+      - text
+      - type
+      type: object
+      x-one-of-name: Question
+    MCQQuestion:
+      properties:
+        type:
+          enum:
+          - MCQ
+          type: string
+        options:
+          items:
+            $ref: "#/components/schemas/MCQOption"
+          minItems: 2
+          type: array
+      required:
+      - options
+      type: object
+    MCQOption:
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        isCorrect:
+          type: boolean
+      required:
+      - id
+      - isCorrect
+      - text
+      type: object
+    TrueFalseQuestion:
+      properties:
+        type:
+          enum:
+          - TRUE_FALSE
+          type: string
+        correctAnswer:
+          type: boolean
+      required:
+      - correctAnswer
+      type: object
+    OpenEndedQuestion:
+      properties:
+        type:
+          enum:
+          - OPEN_ENDED
+          type: string
+      type: object
+    CreateQuestionRequest:
+      discriminator:
+        propertyName: type
+      example:
+        text: text
+        type: MCQ
+        points: 0.8008281904610115
+        order: 6
+      oneOf:
+      - $ref: "#/components/schemas/CreateMCQQuestionRequest"
+      - $ref: "#/components/schemas/CreateTrueFalseQuestionRequest"
+      - $ref: "#/components/schemas/CreateOpenEndedQuestionRequest"
+      properties:
+        type:
+          enum:
+          - MCQ
+          - TRUE_FALSE
+          - OPEN_ENDED
+          type: string
+        text:
+          type: string
+        points:
+          type: number
+        order:
+          type: integer
+      required:
+      - points
+      - text
+      - type
+      type: object
+      x-one-of-name: CreateQuestionRequest
+    CreateMCQQuestionRequest:
+      properties:
+        type:
+          enum:
+          - MCQ
+          type: string
+        options:
+          items:
+            $ref: "#/components/schemas/CreateMCQQuestionRequest_options_inner"
+          minItems: 2
+          type: array
+      required:
+      - options
+      type: object
+    CreateTrueFalseQuestionRequest:
+      properties:
+        type:
+          enum:
+          - TRUE_FALSE
+          type: string
+        correctAnswer:
+          type: boolean
+      required:
+      - correctAnswer
+      type: object
+    CreateOpenEndedQuestionRequest:
+      properties:
+        type:
+          enum:
+          - OPEN_ENDED
+          type: string
+      type: object
+    UpdateQuestionRequest:
+      example:
+        text: text
+        points: 0.8008281904610115
+        order: 6
+      properties:
+        text:
+          type: string
+        points:
+          type: number
+        order:
+          type: integer
+      type: object
+    Attempt:
+      example:
+        studentId: studentId
+        attemptNumber: 0
+        examId: examId
+        startTime: 2000-01-23T04:56:07.000+00:00
+        id: id
+        endTime: 2000-01-23T04:56:07.000+00:00
+        submittedAt: 2000-01-23T04:56:07.000+00:00
+        status: IN_PROGRESS
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        examId:
+          type: string
+        startTime:
+          format: date-time
+          type: string
+        endTime:
+          format: date-time
+          type: string
+        submittedAt:
+          format: date-time
+          nullable: true
+          type: string
+        status:
+          enum:
+          - IN_PROGRESS
+          - SUBMITTED
+          - AUTO_SUBMITTED
+          type: string
+        attemptNumber:
+          type: integer
+      required:
+      - endTime
+      - examId
+      - id
+      - startTime
+      - status
+      - studentId
+      type: object
+    AttemptDetail:
+      allOf:
+      - $ref: "#/components/schemas/Attempt"
+      - properties:
+          answers:
+            items:
+              $ref: "#/components/schemas/Answer"
+            type: array
+          timeRemaining:
+            description: Secondes restantes
+            type: integer
+          isTimeExpired:
+            type: boolean
+        type: object
+      example:
+        studentId: studentId
+        attemptNumber: 0
+        isTimeExpired: true
+        examId: examId
+        answers:
+        - questionId: questionId
+          id: id
+          submittedAt: 2000-01-23T04:56:07.000+00:00
+          content: content
+          attemptId: attemptId
+        - questionId: questionId
+          id: id
+          submittedAt: 2000-01-23T04:56:07.000+00:00
+          content: content
+          attemptId: attemptId
+        timeRemaining: 6
+        startTime: 2000-01-23T04:56:07.000+00:00
+        id: id
+        endTime: 2000-01-23T04:56:07.000+00:00
+        submittedAt: 2000-01-23T04:56:07.000+00:00
+        status: IN_PROGRESS
+    Answer:
+      example:
+        questionId: questionId
+        id: id
+        submittedAt: 2000-01-23T04:56:07.000+00:00
+        content: content
+        attemptId: attemptId
+      properties:
+        id:
+          type: string
+        questionId:
+          type: string
+        attemptId:
+          type: string
+        content:
+          description: Contenu de la réponse (dépend du type de question)
+          type: string
+        submittedAt:
+          format: date-time
+          type: string
+      required:
+      - attemptId
+      - content
+      - id
+      - questionId
+      type: object
+    SubmitAnswerRequest:
+      example:
+        content: content
+      properties:
+        content:
+          description: Contenu de la réponse
+          type: string
+      required:
+      - content
+      type: object
+    Result:
+      example:
+        studentId: studentId
+        score: 0.8008281904610115
+        gradedAt: 2000-01-23T04:56:07.000+00:00
+        percentage: 6.027456183070403
+        examId: examId
+        id: id
+        submittedAt: 2000-01-23T04:56:07.000+00:00
+        attemptId: attemptId
+        status: IN_GRADING
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        examId:
+          type: string
+        attemptId:
+          type: string
+        score:
+          description: Score numérique obtenu
+          nullable: true
+          type: number
+        percentage:
+          description: Pourcentage (0-100)
+          nullable: true
+          type: number
+        status:
+          enum:
+          - IN_GRADING
+          - GRADED
+          type: string
+        submittedAt:
+          format: date-time
+          type: string
+        gradedAt:
+          format: date-time
+          nullable: true
+          type: string
+      required:
+      - attemptId
+      - examId
+      - id
+      - status
+      - studentId
+      type: object
+    ResultDetail:
+      allOf:
+      - $ref: "#/components/schemas/Result"
+      - properties:
+          questionResults:
+            items:
+              $ref: "#/components/schemas/QuestionResult"
+            type: array
+          visibility:
+            $ref: "#/components/schemas/VisibilityConfig"
+        type: object
+      example:
+        studentId: studentId
+        score: 0.8008281904610115
+        visibility:
+          showAnswers: true
+          showScore: true
+          showCorrectAnswers: true
+          showFeedback: true
+        gradedAt: 2000-01-23T04:56:07.000+00:00
+        percentage: 6.027456183070403
+        questionResults:
+        - feedback: feedback
+          pointsEarned: 1.4658129805029452
+          questionId: questionId
+          maxPoints: 5.962133916683182
+          studentAnswer: studentAnswer
+          text: text
+          type: MCQ
+          correctAnswer: correctAnswer
+        - feedback: feedback
+          pointsEarned: 1.4658129805029452
+          questionId: questionId
+          maxPoints: 5.962133916683182
+          studentAnswer: studentAnswer
+          text: text
+          type: MCQ
+          correctAnswer: correctAnswer
+        examId: examId
+        id: id
+        submittedAt: 2000-01-23T04:56:07.000+00:00
+        attemptId: attemptId
+        status: IN_GRADING
+    QuestionResult:
+      example:
+        feedback: feedback
+        pointsEarned: 1.4658129805029452
+        questionId: questionId
+        maxPoints: 5.962133916683182
+        studentAnswer: studentAnswer
+        text: text
+        type: MCQ
+        correctAnswer: correctAnswer
+      properties:
+        questionId:
+          type: string
+        type:
+          enum:
+          - MCQ
+          - TRUE_FALSE
+          - OPEN_ENDED
+          type: string
+        text:
+          type: string
+        studentAnswer:
+          type: string
+        correctAnswer:
+          description: Visible si visibilité autorisée
+          nullable: true
+          type: string
+        pointsEarned:
+          description: null jusqu'à la correction
+          nullable: true
+          type: number
+        maxPoints:
+          type: number
+        feedback:
+          description: Commentaires pour questions ouvertes
+          nullable: true
+          type: string
+      type: object
+    QuestionGrade:
+      example:
+        feedback: feedback
+        pointsEarned: 0.8008281904610115
+        questionId: questionId
+        gradedAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        questionId:
+          type: string
+        pointsEarned:
+          type: number
+        feedback:
+          type: string
+        gradedAt:
+          format: date-time
+          type: string
+      type: object
+    VisibilityConfig:
+      example:
+        showAnswers: true
+        showScore: true
+        showCorrectAnswers: true
+        showFeedback: true
+      properties:
+        showScore:
+          description: Afficher le score global
+          type: boolean
+        showAnswers:
+          description: Afficher les réponses de l'étudiant
+          type: boolean
+        showCorrectAnswers:
+          description: Afficher les bonnes réponses
+          type: boolean
+        showFeedback:
+          description: Afficher les commentaires de correction
+          type: boolean
+      required:
+      - showAnswers
+      - showCorrectAnswers
+      - showFeedback
+      - showScore
+      type: object
+    _auth_login_post_request:
+      properties:
+        email:
+          example: enseignant@uqac.ca
+          format: email
+          type: string
+        password:
+          example: SecurePassword123
+          format: password
+          type: string
+      required:
+      - email
+      - password
+      type: object
+    _auth_login_post_200_response:
+      example:
+        user:
+          firstName: firstName
+          lastName: lastName
+          createdAt: 2000-01-23T04:56:07.000+00:00
+          role: ADMIN
+          id: id
+          email: email
+        token: token
+      properties:
+        token:
+          description: Token JWT pour les requêtes futures
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      type: object
+    _exams__examId__status_put_request:
+      properties:
+        status:
+          enum:
+          - DRAFT
+          - ACTIVE
+          - CLOSED
+          - IN_GRADING
+          - GRADED
+          type: string
+      required:
+      - status
+      type: object
+    _exams__examId__results__resultId__questions__questionId__grade_put_request:
+      properties:
+        points:
+          description: Points accordés (0 à max points de la question)
+          type: number
+        feedback:
+          description: Commentaires de correction
+          type: string
+      required:
+      - points
+      type: object
+    CreateMCQQuestionRequest_options_inner:
+      properties:
+        text:
+          type: string
+        isCorrect:
+          type: boolean
+      required:
+      - isCorrect
+      - text
+      type: object
+  securitySchemes:
+    BearerAuth:
+      bearerFormat: JWT
+      description: Authentification par token JWT
+      scheme: bearer
+      type: http
+  

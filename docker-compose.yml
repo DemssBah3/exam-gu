@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: exam-gu-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: exam_gu_password_123
+      POSTGRES_DB: PROJET_ARCHI_EXAM_GU
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./exam-gu-server
+      dockerfile: Dockerfile
+    container_name: exam-gu-api
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgresql://postgres:exam_gu_password_123@postgres:5432/PROJET_ARCHI_EXAM_GU
+      JWT_SECRET: your_jwt_secret_key_change_in_production
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./exam-gu-server:/app
+      - /app/node_modules
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+  # Frontend
+  frontend:
+    build:
+      context: ./exam-gu-frontend
+      dockerfile: Dockerfile
+    container_name: exam-gu-web
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./exam-gu-frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:

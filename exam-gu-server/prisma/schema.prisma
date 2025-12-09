@@ -1,0 +1,171 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          String   @default("STUDENT")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  courseAssignments CourseAssignment[]
+  enrollments       Enrollment[]
+  exams             Exam[]
+  attempts          Attempt[]
+  loginLogs         LoginLog[]
+
+  @@map("users")
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  title         String
+  description   String?
+  credits       Int      @default(3)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      Session[]
+
+  @@map("courses")
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  courseId      String
+  semester      String
+  startDate     String
+  endDate       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseAssignments CourseAssignment[]
+  enrollments   Enrollment[]
+  exams         Exam[]
+
+  @@map("sessions")
+}
+
+model CourseAssignment {
+  id            String   @id @default(uuid())
+  teacherId     String
+  sessionId     String
+  assignedAt    DateTime @default(now())
+
+  teacher       User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("course_assignments")
+}
+
+model Enrollment {
+  id            String   @id @default(uuid())
+  studentId     String
+  sessionId     String
+  enrolledAt    DateTime @default(now())
+
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("enrollments")
+}
+
+model Exam {
+  id                String   @id @default(uuid())
+  title             String
+  description       String?
+  sessionId         String
+  courseId          String
+  teacherId         String
+  duration          Int
+  startTime         String
+  endTime           String
+  maxAttempts       Int      @default(1)
+  status            String   @default("DRAFT")
+  visibilityConfig  String   @default("{\"showScore\":true,\"showAnswers\":false,\"showCorrectAnswers\":false,\"showFeedback\":true}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  session           Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teacher           User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  questions         Question[]
+  attempts          Attempt[]
+
+  @@map("exams")
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  examId        String
+  type          String
+  text          String
+  points        Int      @default(1)
+  order         Int
+  allowMultiple Boolean  @default(false)
+  options       String?
+  correctAnswer String?
+
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers       Answer[]
+
+  @@map("questions")
+}
+
+model Attempt {
+  id            String   @id @default(uuid())
+  examId        String
+  studentId     String
+  status        String   @default("IN_PROGRESS")
+  score         Int?
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers       Answer[]
+
+  @@map("attempts")
+}
+
+model Answer {
+  id              String   @id @default(uuid())
+  attemptId       String
+  questionId      String
+  selectedOption  String?
+  selectedOptions String?
+  booleanAnswer   Boolean?
+  textAnswer      String?
+  pointsAwarded   Int?
+  feedback        String?
+  submittedAt     DateTime @default(now())
+
+  attempt         Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("answers")
+}
+
+model LoginLog {
+  id            String   @id @default(uuid())
+  userId        String
+  timestamp     DateTime @default(now())
+  ipAddress     String?
+  userAgent     String?
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_logs")
+}

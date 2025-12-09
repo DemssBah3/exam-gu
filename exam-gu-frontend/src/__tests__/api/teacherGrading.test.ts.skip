@@ -1,0 +1,96 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { teacherGradingApi } from '../../api/teacherGrading';
+import axios from 'axios';
+
+vi.mock('axios');
+
+describe('TeacherGrading API', () => {
+  
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('getAttemptsToGrade', () => {
+    
+    it('should fetch attempts to grade', async () => {
+      // Test: Récupérer les tentatives à corriger
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { attempts: [] },
+      } as any);
+
+      const result = await teacherGradingApi.getAttemptsToGrade('exam-123');
+      expect(result).toBeDefined();
+    });
+
+    it('should call correct endpoint', async () => {
+      // Test: Appeler le bon endpoint
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { attempts: [] },
+      } as any);
+
+      await teacherGradingApi.getAttemptsToGrade('exam-123');
+      expect(axios.get).toHaveBeenCalledWith('/teacher/exams/exam-123/grading');
+    });
+  });
+
+  describe('gradeOpenEnded', () => {
+    
+    it('should save grade for open-ended question', async () => {
+      // Test: Sauvegarder une note
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { success: true },
+      } as any);
+
+      const result = await teacherGradingApi.gradeOpenEnded(
+        'exam-123',
+        'attempt-123',
+        {
+          questionId: 'q-1',
+          points: 12,
+          feedback: 'Good!',
+        }
+      );
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('finalizeGrading', () => {
+    
+    it('should finalize grading', async () => {
+      // Test: Finaliser la correction
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { success: true },
+      } as any);
+
+      const result = await teacherGradingApi.finalizeGrading('exam-123', 'attempt-123');
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getAttemptDetails', () => {
+    
+    it('should fetch attempt details for grading', async () => {
+      // Test: Récupérer les détails pour correction
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { attempt: {}, questions: [] },
+      } as any);
+
+      const result = await teacherGradingApi.getAttemptDetails('exam-123', 'attempt-123');
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('releaseResults', () => {
+    
+    it('should release results to students', async () => {
+      // Test: Publier les résultats
+      vi.mocked(axios.post).mockResolvedValueOnce({
+        data: { success: true },
+      } as any);
+
+      const result = await teacherGradingApi.releaseResults('exam-123');
+      expect(result).toBeDefined();
+    });
+  });
+});

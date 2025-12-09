@@ -1,0 +1,52 @@
+{
+  "name": "exam-gu-api",
+  "version": "1.0.0",
+  "description": "API de gestion des examens en ligne pour l'Université de Québec à Chicoutimi",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "mocha '__tests__/**/*.test.js' --timeout 5000",
+    "test:watch": "mocha '__tests__/**/*.test.js' --watch --timeout 5000",
+    "test:coverage": "nyc mocha '__tests__/**/*.test.js'",
+    "test:unit": "mocha '__tests__/unit/**/*.test.js'",
+    "test:integration": "mocha '__tests__/integration/**/*.test.js'"
+  },
+  "keywords": [
+    "openapi-generator",
+    "openapi"
+  ],
+  "license": "Unlicense",
+  "private": true,
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "camelcase": "^5.3.1",
+    "cookie-parser": "^1.4.4",
+    "cors": "^2.8.5",
+    "express": "^4.16.4",
+    "express-openapi-validator": "^4.13.8",
+    "js-yaml": "^3.3.0",
+    "jsonwebtoken": "^8.5.1",
+    "ono": "^5.0.1",
+    "openapi-sampler": "^1.0.0-beta.15",
+    "prisma": "^5.22.0",
+    "swagger-ui-express": "^4.0.2",
+    "uuid": "^3.4.0",
+    "winston": "^3.2.1"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.17.2",
+    "mocha": "^7.1.1",
+    "nyc": "^17.1.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true
+    }
+  }
+}

@@ -1,0 +1,24 @@
+Backend
+
+cd exam-gu-server
+
+# Installer les dépendances
+npm install
+
+# Lancer le serveur
+npm start
+# ou en développement avec auto-reload
+npm run dev
+
+Frontend
+
+cd exam-gu-frontend
+
+# Installer les dépendances
+npm install
+
+# Lancer le dev server
+npm run dev
+
+# Builder pour production
+npm run build
